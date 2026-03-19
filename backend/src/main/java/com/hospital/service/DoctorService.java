@@ -5,6 +5,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.hospital.dto.DoctorRequest;
 import com.hospital.dto.DoctorResponse;
@@ -30,18 +31,21 @@ public class DoctorService {
         this.hospitalRepository = hospitalRepository;
     }
 
+    @Transactional(readOnly = true)
     public List<DoctorResponse> getAllDoctors() {
         return doctorRepository.findAll().stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public DoctorResponse getDoctorById(Long id) {
         Doctor doctor = doctorRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Doctor not found with id: " + id));
         return mapToResponse(doctor);
     }
 
+    @Transactional(readOnly = true)
     public List<DoctorResponse> getDoctorsBySpecialization(String specialization) {
         return doctorRepository.findBySpecialization(specialization).stream()
                 .map(this::mapToResponse)
@@ -101,6 +105,7 @@ public class DoctorService {
                 .build();
     }
 
+    @Transactional(readOnly = true)
     public List<DoctorResponse> getDoctorsByHospital(Long hospitalId) {
         return doctorRepository.findByHospitalId(hospitalId).stream()
                 .map(this::mapToResponse)
