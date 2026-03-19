@@ -126,70 +126,74 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         {showCityModal && <CitySelector onSelect={handleCitySelect} />}
-        <Navbar city={city} onCityClick={() => setShowCityModal(true)} />
+        <div className="app-shell">
+          <Navbar city={city} onCityClick={() => setShowCityModal(true)} />
 
-        <Routes>
-          {/* Public */}
-          <Route path="/" element={<Home city={city} />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/doctors-list" element={<DoctorsList />} />
-          <Route path="/hospitals" element={<HospitalSearch />} />
-          <Route path="/hospitals/:id" element={<HospitalDetail />} />
-          <Route path="/ai/symptoms" element={<SymptomAssistant />} />
+          <main className="app-content">
+            <Routes>
+              {/* Public */}
+              <Route path="/" element={<Home city={city} />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/doctors-list" element={<DoctorsList />} />
+              <Route path="/hospitals" element={<HospitalSearch />} />
+              <Route path="/hospitals/:id" element={<HospitalDetail />} />
+              <Route path="/ai/symptoms" element={<SymptomAssistant />} />
 
-          {/* Patient */}
-          <Route path="/patient/book" element={
-            <ProtectedRoute allowedRoles={['PATIENT']}><BookAppointment /></ProtectedRoute>
-          } />
-          <Route path="/patient/appointments" element={
-            <ProtectedRoute allowedRoles={['PATIENT']}><AppointmentHistory /></ProtectedRoute>
-          } />
-          <Route path="/patient/queue" element={
-            <ProtectedRoute allowedRoles={['PATIENT']}><QueueStatus /></ProtectedRoute>
-          } />
-          <Route path="/patient/profile" element={
-            <ProtectedRoute allowedRoles={['PATIENT']}><PatientProfile /></ProtectedRoute>
-          } />
-          <Route path="/patient/account" element={
-            <ProtectedRoute allowedRoles={['PATIENT']}><AccountSettings /></ProtectedRoute>
-          } />
+              {/* Patient */}
+              <Route path="/patient/book" element={
+                <ProtectedRoute allowedRoles={['PATIENT']}><BookAppointment /></ProtectedRoute>
+              } />
+              <Route path="/patient/appointments" element={
+                <ProtectedRoute allowedRoles={['PATIENT']}><AppointmentHistory /></ProtectedRoute>
+              } />
+              <Route path="/patient/queue" element={
+                <ProtectedRoute allowedRoles={['PATIENT']}><QueueStatus /></ProtectedRoute>
+              } />
+              <Route path="/patient/profile" element={
+                <ProtectedRoute allowedRoles={['PATIENT']}><PatientProfile /></ProtectedRoute>
+              } />
+              <Route path="/patient/account" element={
+                <ProtectedRoute allowedRoles={['PATIENT']}><AccountSettings /></ProtectedRoute>
+              } />
 
-          {/* Doctor */}
-          <Route path="/doctor/dashboard" element={
-            <ProtectedRoute allowedRoles={['DOCTOR']}><DoctorDashboard /></ProtectedRoute>
-          } />
-          <Route path="/doctor/appointments" element={
-            <ProtectedRoute allowedRoles={['DOCTOR']}><DoctorAppointments /></ProtectedRoute>
-          } />
-          <Route path="/doctor/slots" element={
-            <ProtectedRoute allowedRoles={['DOCTOR']}><ManageSlots /></ProtectedRoute>
-          } />
-          <Route path="/doctor/report/:appointmentId" element={
-            <ProtectedRoute allowedRoles={['DOCTOR']}><MedicalReportForm /></ProtectedRoute>
-          } />
+              {/* Doctor */}
+              <Route path="/doctor/dashboard" element={
+                <ProtectedRoute allowedRoles={['DOCTOR']}><DoctorDashboard /></ProtectedRoute>
+              } />
+              <Route path="/doctor/appointments" element={
+                <ProtectedRoute allowedRoles={['DOCTOR']}><DoctorAppointments /></ProtectedRoute>
+              } />
+              <Route path="/doctor/slots" element={
+                <ProtectedRoute allowedRoles={['DOCTOR']}><ManageSlots /></ProtectedRoute>
+              } />
+              <Route path="/doctor/report/:appointmentId" element={
+                <ProtectedRoute allowedRoles={['DOCTOR']}><MedicalReportForm /></ProtectedRoute>
+              } />
 
-          {/* Report View (accessible by patient and doctor) */}
-          <Route path="/report/:appointmentId" element={
-            <ProtectedRoute allowedRoles={['PATIENT', 'DOCTOR', 'ADMIN']}><ReportView /></ProtectedRoute>
-          } />
+              {/* Report View (accessible by patient and doctor) */}
+              <Route path="/report/:appointmentId" element={
+                <ProtectedRoute allowedRoles={['PATIENT', 'DOCTOR', 'ADMIN']}><ReportView /></ProtectedRoute>
+              } />
 
-          {/* Admin */}
-          <Route path="/admin/dashboard" element={
-            <ProtectedRoute allowedRoles={['ADMIN']}><AdminDashboard /></ProtectedRoute>
-          } />
-          <Route path="/admin/appointments" element={
-            <ProtectedRoute allowedRoles={['ADMIN']}><AdminAppointments /></ProtectedRoute>
-          } />
-          <Route path="/admin/doctors" element={
-            <ProtectedRoute allowedRoles={['ADMIN']}><ManageDoctors /></ProtectedRoute>
-          } />
-          <Route path="/admin/hospitals" element={
-            <ProtectedRoute allowedRoles={['ADMIN']}><ManageHospitals /></ProtectedRoute>
-          } />
-        </Routes>
+              {/* Admin */}
+              <Route path="/admin/dashboard" element={
+                <ProtectedRoute allowedRoles={['ADMIN']}><AdminDashboard /></ProtectedRoute>
+              } />
+              <Route path="/admin/appointments" element={
+                <ProtectedRoute allowedRoles={['ADMIN']}><AdminAppointments /></ProtectedRoute>
+              } />
+              <Route path="/admin/doctors" element={
+                <ProtectedRoute allowedRoles={['ADMIN']}><ManageDoctors /></ProtectedRoute>
+              } />
+              <Route path="/admin/hospitals" element={
+                <ProtectedRoute allowedRoles={['ADMIN']}><ManageHospitals /></ProtectedRoute>
+              } />
+            </Routes>
 
-        <Footer />
+            <Footer />
+          </main>
+        </div>
 
         <ToastContainer
           position="top-right"
