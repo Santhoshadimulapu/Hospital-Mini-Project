@@ -1,11 +1,12 @@
 package com.hospital.config;
 
+import java.util.Arrays;
 import java.util.logging.Logger;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.context.annotation.Profile;
+import org.springframework.core.env.Environment;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
@@ -17,7 +18,6 @@ import com.hospital.repository.DoctorRepository;
 import com.hospital.repository.HospitalRepository;
 
 @Component
-@Profile("!prod")
 @ConditionalOnProperty(name = "app.seed.enabled", havingValue = "true", matchIfMissing = true)
 public class DataSeeder implements CommandLineRunner {
 
@@ -27,6 +27,7 @@ public class DataSeeder implements CommandLineRunner {
         private final DoctorRepository doctorRepository;
         private final AdminRepository adminRepository;
         private final PasswordEncoder passwordEncoder;
+        private final Environment environment;
 
         @Value("${app.seed.admin-email:admin@hospital.local}")
         private String seedAdminEmail;
@@ -34,18 +35,30 @@ public class DataSeeder implements CommandLineRunner {
         @Value("${app.seed.admin-password:change-me-admin-password}")
         private String seedAdminPassword;
 
+                @Value("${app.seed.allow-in-prod:false}")
+                private boolean allowSeedInProd;
+
     public DataSeeder(HospitalRepository hospitalRepository,
                       DoctorRepository doctorRepository,
                       AdminRepository adminRepository,
-                      PasswordEncoder passwordEncoder) {
+                                          PasswordEncoder passwordEncoder,
+                                          Environment environment) {
         this.hospitalRepository = hospitalRepository;
         this.doctorRepository = doctorRepository;
         this.adminRepository = adminRepository;
         this.passwordEncoder = passwordEncoder;
+                this.environment = environment;
     }
 
     @Override
     public void run(String... args) {
+                boolean prodProfileActive = Arrays.stream(environment.getActiveProfiles())
+                                .anyMatch(profile -> "prod".equalsIgnoreCase(profile));
+                if (prodProfileActive && !allowSeedInProd) {
+                        log.info("Skipping seed data in prod. Set APP_SEED_ALLOW_IN_PROD=true to override.");
+                        return;
+                }
+
         // Seed admin if not exists
         if (adminRepository.count() == 0) {
             Admin admin = new Admin();
