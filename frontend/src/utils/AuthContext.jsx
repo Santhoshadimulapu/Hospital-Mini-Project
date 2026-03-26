@@ -1,5 +1,4 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import authService from '../services/authService';
 
 const AuthContext = createContext(null);
@@ -18,7 +17,10 @@ export function AuthProvider({ children }) {
         userId: stored.userId ?? stored.id ?? null,
       };
       setUser(normalizedUser);
-      localStorage.setItem('user', JSON.stringify(normalizedUser));
+      const token = authService.getToken();
+      if (token) {
+        authService.setSession(token, normalizedUser);
+      }
     }
     setLoading(false);
   }, []);
@@ -28,8 +30,7 @@ export function AuthProvider({ children }) {
       ...userData,
       userId: userData.userId ?? userData.id ?? null,
     };
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(normalizedUser));
+    authService.setSession(token, normalizedUser);
     setUser(normalizedUser);
   };
 
