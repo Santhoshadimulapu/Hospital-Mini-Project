@@ -10,9 +10,11 @@ export default function AdminAppointments() {
   const [appointments, setAppointments] = useState([]);
   const [hospitals, setHospitals] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [filter, setFilter] = useState('ALL');
   const [selectedHospital, setSelectedHospital] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+  const [cancelModal, setCancelModal] = useState({ open: false, appointmentId: null, reason: '' });
 
   const fetchAppointments = () => {
     adminService.getAllAppointments()
@@ -29,14 +31,22 @@ export default function AdminAppointments() {
 
   useEffect(() => { fetchAppointments(); fetchHospitals(); }, []);
 
-  const handleCancel = async (id) => {
-    if (!window.confirm('Cancel this appointment?')) return;
+  const openCancelModal = (id) => {
+    setCancelModal({ open: true, appointmentId: id, reason: '' });
+  };
+
+  const handleCancelSubmit = async () => {
+    if (!cancelModal.appointmentId) return;
+    setSubmitting(true);
     try {
-      await adminService.cancelAppointment(id);
+      await adminService.cancelAppointment(cancelModal.appointmentId, cancelModal.reason || null);
       toast.success('Appointment cancelled');
+      setCancelModal({ open: false, appointmentId: null, reason: '' });
       fetchAppointments();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Cancel failed');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -144,7 +154,7 @@ export default function AdminAppointments() {
                     <td><span className={`badge ${getStatusBadgeClass(appt.status)}`}>{appt.status}</span></td>
                     <td>
                       {(appt.status === 'BOOKED' || appt.status === 'WAITING') && (
-                        <button className="btn btn-danger btn-sm" onClick={() => handleCancel(appt.id)}>Cancel</button>
+                        <button className="btn btn-danger btn-sm" onClick={() => openCancelModal(appt.id)}>Cancel</button>
                       )}
                     </td>
                   </tr>
@@ -154,6 +164,34 @@ export default function AdminAppointments() {
           </div>
         )}
       </div>
+
+      {cancelModal.open && (
+        <div className="modal-backdrop" role="dialog" aria-modal="true">
+          <div className="modal-card">
+            <h3>Cancel Appointment</h3>
+            <p className="modal-subtitle">Optional: add cancellation reason for analytics.</p>
+            <textarea
+              className="form-control"
+              rows={3}
+              placeholder="Reason"
+              value={cancelModal.reason}
+              onChange={(e) => setCancelModal((prev) => ({ ...prev, reason: e.target.value }))}
+            />
+            <div className="modal-actions">
+              <button
+                className="btn btn-outline"
+                onClick={() => setCancelModal({ open: false, appointmentId: null, reason: '' })}
+                disabled={submitting}
+              >
+                Close
+              </button>
+              <button className="btn btn-danger" onClick={handleCancelSubmit} disabled={submitting}>
+                {submitting ? 'Cancelling...' : 'Confirm Cancel'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

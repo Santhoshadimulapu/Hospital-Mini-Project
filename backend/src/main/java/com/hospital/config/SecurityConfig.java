@@ -51,10 +51,10 @@ public class SecurityConfig {
                 .requestMatchers("/ai/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/doctors", "/doctors/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/hospitals", "/hospitals/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/queue/**").permitAll()
 
                 // Reports - only authenticated users (doctor/patient/admin)
                 .requestMatchers("/reports/**").authenticated()
+                .requestMatchers("/queue/**").authenticated()
 
                 // Role-based restrictions
                 .requestMatchers("/admin/**").hasRole("ADMIN")

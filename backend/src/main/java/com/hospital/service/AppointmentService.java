@@ -1,6 +1,7 @@
 package com.hospital.service;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.TextStyle;
 import java.util.Arrays;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.hospital.dto.AppointmentBookRequest;
+import com.hospital.dto.AppointmentRescheduleRequest;
 import com.hospital.dto.AppointmentResponse;
 import com.hospital.entity.Appointment;
 import com.hospital.entity.Appointment.Status;
@@ -24,6 +26,7 @@ import com.hospital.repository.AppointmentRepository;
 import com.hospital.repository.DoctorRepository;
 import com.hospital.repository.MedicalReportRepository;
 import com.hospital.repository.PatientRepository;
+import com.hospital.repository.QueueRepository;
 
 @Service
 public class AppointmentService {
@@ -33,6 +36,7 @@ public class AppointmentService {
     private final DoctorRepository doctorRepository;
     private final QueueService queueService;
     private final MedicalReportRepository medicalReportRepository;
+    private final QueueRepository queueRepository;
     private final SmsNotificationService smsNotificationService;
 
     public AppointmentService(AppointmentRepository appointmentRepository,
@@ -40,12 +44,14 @@ public class AppointmentService {
                               DoctorRepository doctorRepository,
                               QueueService queueService,
                               MedicalReportRepository medicalReportRepository,
+                              QueueRepository queueRepository,
                               SmsNotificationService smsNotificationService) {
         this.appointmentRepository = appointmentRepository;
         this.patientRepository = patientRepository;
         this.doctorRepository = doctorRepository;
         this.queueService = queueService;
         this.medicalReportRepository = medicalReportRepository;
+        this.queueRepository = queueRepository;
         this.smsNotificationService = smsNotificationService;
     }
 
@@ -72,9 +78,7 @@ public class AppointmentService {
 
         LocalDate date = LocalDate.parse(request.getAppointmentDate());
         LocalTime time = LocalTime.parse(request.getSlotTime());
-        int consultationMinutes = doctor.getConsultationTime() != null && doctor.getConsultationTime() > 0
-            ? doctor.getConsultationTime()
-            : 30;
+        int consultationMinutes = safePositiveInt(doctor.getConsultationTime(), 30);
         LocalTime requestedEndTime = time.plusMinutes(consultationMinutes);
 
         // 3. Date must not be in the past
@@ -125,7 +129,8 @@ public class AppointmentService {
         appointmentRepository.save(appointment);
 
         // Generate queue entry — if this fails, entire transaction rolls back
-        int priority = (request.getPriorityLevel() != null) ? request.getPriorityLevel() : 0;
+        Integer priorityObj = request.getPriorityLevel();
+        int priority = priorityObj != null ? priorityObj : 0;
         queueService.createQueueEntry(appointment, priority);
 
         return mapToResponse(appointment);
@@ -167,7 +172,7 @@ public class AppointmentService {
      * the queue queries filter out CANCELLED status appointments.
      */
     @Transactional
-    public void cancelAppointment(Long id) {
+    public void cancelAppointment(Long id, String reason) {
         Appointment appointment = appointmentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Appointment not found with id: " + id));
 
@@ -179,11 +184,83 @@ public class AppointmentService {
         }
 
         appointment.setStatus(Appointment.Status.CANCELLED);
+    appointment.setCancellationReason(normalizeReason(reason));
         appointmentRepository.save(appointment);
 
         // Remove queue entry — remaining patients' wait times auto-recalculate
         // because countPatientsAhead excludes CANCELLED appointments
         queueService.removeQueueEntry(id);
+    }
+
+    @Transactional
+    public AppointmentResponse rescheduleAppointment(Long id, AppointmentRescheduleRequest request) {
+        Appointment appointment = appointmentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Appointment not found with id: " + id));
+
+        if (appointment.getStatus() == Appointment.Status.CANCELLED || appointment.getStatus() == Appointment.Status.COMPLETED) {
+            throw new BadRequestException("Only BOOKED or WAITING appointments can be rescheduled");
+        }
+
+        Doctor targetDoctor = appointment.getDoctor();
+        if (request.getDoctorId() != null) {
+            targetDoctor = doctorRepository.findById(request.getDoctorId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Doctor not found with id: " + request.getDoctorId()));
+        }
+
+        LocalDate date = LocalDate.parse(request.getAppointmentDate());
+        LocalTime time = LocalTime.parse(request.getSlotTime());
+
+        if (date.isBefore(LocalDate.now())) {
+            throw new BadRequestException("Appointment date cannot be in the past");
+        }
+
+        if (targetDoctor.getAvailableDays() != null && !targetDoctor.getAvailableDays().isBlank()) {
+            String dayName = date.getDayOfWeek().getDisplayName(TextStyle.SHORT, Locale.ENGLISH).toUpperCase();
+            List<String> availableDays = Arrays.stream(targetDoctor.getAvailableDays().split(","))
+                    .map(d -> d.trim().toUpperCase())
+                    .collect(Collectors.toList());
+
+            if (!availableDays.contains(dayName)) {
+                throw new BadRequestException("Doctor " + targetDoctor.getName() + " is not available on " + dayName);
+            }
+        }
+
+        int consultationMinutes = safePositiveInt(targetDoctor.getConsultationTime(), 30);
+
+        LocalTime requestedEndTime = time.plusMinutes(consultationMinutes);
+        List<Appointment> dayAppointments = appointmentRepository.findByDoctorIdAndAppointmentDate(targetDoctor.getId(), date);
+
+        boolean conflict = dayAppointments.stream()
+                .filter(a -> !a.getId().equals(appointment.getId()))
+                .filter(a -> a.getStatus() != Status.CANCELLED)
+                .anyMatch(a -> {
+                    LocalTime existingStart = a.getSlotTime();
+                    LocalTime existingEnd = existingStart.plusMinutes(consultationMinutes);
+                    return time.isBefore(existingEnd) && existingStart.isBefore(requestedEndTime);
+                });
+
+        if (conflict) {
+            throw new SlotConflictException("Requested slot conflicts with an existing appointment");
+        }
+
+        int priorityLevel = queueRepository.findByAppointmentId(appointment.getId())
+            .map(q -> q.getPriorityLevel() == null ? Integer.valueOf(0) : q.getPriorityLevel())
+                .orElse(0);
+
+        queueRepository.findByAppointmentId(appointment.getId()).ifPresent(queueRepository::delete);
+
+        appointment.setDoctor(targetDoctor);
+        appointment.setAppointmentDate(date);
+        appointment.setSlotTime(time);
+        appointment.setStatus(Appointment.Status.BOOKED);
+        appointment.setCancellationReason(normalizeReason(request.getReason()));
+        appointment.setLastRescheduledAt(LocalDateTime.now());
+        appointmentRepository.save(appointment);
+
+        queueService.createQueueEntry(appointment, priorityLevel);
+        smsNotificationService.sendStatusUpdated(appointment, "RESCHEDULED");
+
+        return mapToResponse(appointment);
     }
 
     @Transactional
@@ -212,9 +289,22 @@ public class AppointmentService {
                 .appointmentDate(appointment.getAppointmentDate().toString())
                 .slotTime(appointment.getSlotTime().toString())
                 .status(appointment.getStatus().name())
+                .cancellationReason(appointment.getCancellationReason())
                 .hasReport(medicalReportRepository.existsByAppointmentId(appointment.getId()))
                 .hospitalId(appointment.getDoctor().getHospital() != null ? appointment.getDoctor().getHospital().getId() : null)
                 .hospitalName(appointment.getDoctor().getHospital() != null ? appointment.getDoctor().getHospital().getName() : null)
                 .build();
+    }
+
+    private String normalizeReason(String reason) {
+        if (reason == null) {
+            return null;
+        }
+        String trimmed = reason.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private int safePositiveInt(Integer value, int defaultValue) {
+        return (value != null && value > 0) ? value : defaultValue;
     }
 }

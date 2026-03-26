@@ -6,8 +6,8 @@ import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -29,6 +29,7 @@ public class QueueController {
 
     // GET /queue/status/{doctorId} — get queue for a doctor (today by default)
     @GetMapping("/status/{doctorId}")
+    @PreAuthorize("hasAnyRole('PATIENT','DOCTOR','ADMIN')")
     public ResponseEntity<ApiResponse<List<QueueResponse>>> getQueueByDoctor(
             @PathVariable Long doctorId,
             @RequestParam(required = false) String date) {
@@ -38,6 +39,7 @@ public class QueueController {
 
     // GET /queue/wait-time/{appointmentId} — get estimated wait time
     @GetMapping("/wait-time/{appointmentId}")
+    @PreAuthorize("@accessControl.canAccessAppointment(#appointmentId)")
     public ResponseEntity<ApiResponse<WaitTimeResponse>> getWaitTime(
             @PathVariable Long appointmentId) {
         return ResponseEntity.ok(ApiResponse.success(queueService.getWaitTime(appointmentId)));
@@ -45,7 +47,7 @@ public class QueueController {
 
     // POST /queue/call-next/{doctorId} — call next patient in queue (doctor/admin)
     @PostMapping("/call-next/{doctorId}")
-    @PreAuthorize("hasAnyRole('DOCTOR','ADMIN')")
+    @PreAuthorize("@accessControl.canManageDoctorQueue(#doctorId)")
     public ResponseEntity<ApiResponse<QueueResponse>> callNextPatient(
             @PathVariable Long doctorId,
             @RequestParam(required = false) String date) {
@@ -56,7 +58,7 @@ public class QueueController {
 
     // POST /queue/skip-missed/{appointmentId} — mark no-show and move to end, then call next
     @PostMapping("/skip-missed/{appointmentId}")
-    @PreAuthorize("hasAnyRole('DOCTOR','ADMIN')")
+    @PreAuthorize("@accessControl.canManageAppointmentQueue(#appointmentId)")
     public ResponseEntity<ApiResponse<QueueResponse>> skipMissedAndCallNext(
             @PathVariable Long appointmentId) {
         QueueResponse called = queueService.skipMissedAndMoveToEnd(appointmentId);

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { FaHeartbeat, FaSearch, FaHospital, FaUserMd, FaExclamationTriangle, FaRobot } from 'react-icons/fa';
+import { FaHeartbeat, FaSearch, FaHospital, FaUserMd, FaExclamationTriangle, FaRobot, FaPills, FaInfoCircle, FaShieldAlt } from 'react-icons/fa';
 import aiService from '../services/aiService';
 import LoadingSpinner from '../components/LoadingSpinner';
 
@@ -121,6 +121,71 @@ export default function SymptomAssistant() {
                     <FaRobot /> AI Analysis
                   </h4>
                   <p style={{ margin: 0, lineHeight: 1.6, color: '#1a4f70' }}>{result.aiReasoning}</p>
+                </div>
+              </div>
+            )}
+
+            <div className="card" style={{ marginBottom: 20, border: '1px solid #e67e22', background: '#fff7eb' }}>
+              <div className="card-body" style={{ color: '#9a4d00', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                <FaExclamationTriangle style={{ marginTop: 4 }} />
+                <div>
+                  <h3 style={{ marginBottom: 6 }}>Medication Safety Warning</h3>
+                  <p style={{ margin: 0 }}>
+                    AI medication suggestions are for informational support only. Always verify with a qualified doctor and do not blindly follow AI suggestions.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {result.symptomSummary && (
+              <div className="card" style={{ marginBottom: 20 }}>
+                <div className="card-body">
+                  <h3 style={{ marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <FaInfoCircle /> Symptom Information
+                  </h3>
+                  <p style={{ margin: 0, color: 'var(--text-muted)', lineHeight: 1.6 }}>{result.symptomSummary}</p>
+                </div>
+              </div>
+            )}
+
+            {(result.medicationSuggestions || []).length > 0 && (
+              <div className="card" style={{ marginBottom: 20 }}>
+                <div className="card-body">
+                  <h3 style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <FaPills /> Suggested Medications to Discuss with Doctor
+                  </h3>
+                  <div style={{ display: 'grid', gap: 12 }}>
+                    {(result.medicationSuggestions || []).map((med, idx) => (
+                      <div key={`${med.name || 'med'}-${idx}`} style={{ border: '1px solid #e5e7eb', borderRadius: 10, padding: 12, background: '#fafafa' }}>
+                        <h4 style={{ marginBottom: 6 }}>{med.name || 'Medication option'}</h4>
+                        {med.purpose && (
+                          <p style={{ marginBottom: 6, color: 'var(--text-muted)' }}>
+                            <strong>Information:</strong> {med.purpose}
+                          </p>
+                        )}
+                        {med.precautions && (
+                          <p style={{ margin: 0, color: '#b33939' }}>
+                            <strong>Precaution:</strong> {med.precautions}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {(result.precautions || []).length > 0 && (
+              <div className="card" style={{ marginBottom: 20 }}>
+                <div className="card-body">
+                  <h3 style={{ marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <FaShieldAlt /> General Precautions
+                  </h3>
+                  <ul style={{ margin: 0, paddingLeft: 20, color: 'var(--text-muted)' }}>
+                    {(result.precautions || []).map((item, idx) => (
+                      <li key={`precaution-${idx}`} style={{ marginBottom: 6 }}>{item}</li>
+                    ))}
+                  </ul>
                 </div>
               </div>
             )}

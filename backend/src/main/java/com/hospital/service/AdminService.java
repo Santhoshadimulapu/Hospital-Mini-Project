@@ -2,6 +2,7 @@ package com.hospital.service;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
@@ -34,11 +35,12 @@ public class AdminService {
                 .collect(Collectors.toList());
     }
 
-    public void cancelAppointment(Long id) {
+        public void cancelAppointment(Long id, String reason) {
         Appointment appointment = appointmentRepository.findById(id)
                 .orElseThrow(() -> new com.hospital.exception.ResourceNotFoundException(
                         "Appointment not found with id: " + id));
         appointment.setStatus(Appointment.Status.CANCELLED);
+                appointment.setCancellationReason(normalizeReason(reason));
         appointmentRepository.save(appointment);
         queueService.removeQueueEntry(id);
     }
@@ -61,6 +63,23 @@ public class AdminService {
                 .filter(a -> a.getStatus() == Appointment.Status.WAITING
                         || a.getStatus() == Appointment.Status.BOOKED).count();
 
+        List<Appointment> cancelled = appointmentRepository.findAll().stream()
+                .filter(a -> a.getStatus() == Appointment.Status.CANCELLED)
+                .collect(Collectors.toList());
+
+        long cancellationsWithReason = cancelled.stream()
+                .filter(a -> a.getCancellationReason() != null && !a.getCancellationReason().isBlank())
+                .count();
+
+        String topCancellationReason = cancelled.stream()
+                .map(Appointment::getCancellationReason)
+                .filter(r -> r != null && !r.isBlank())
+                .collect(Collectors.groupingBy(r -> r, Collectors.counting()))
+                .entrySet().stream()
+                .max(Map.Entry.comparingByValue())
+                .map(Map.Entry::getKey)
+                .orElse("N/A");
+
         return DashboardStats.builder()
                 .totalPatients(totalPatients)
                 .totalDoctors(totalDoctors)
@@ -69,6 +88,8 @@ public class AdminService {
                 .completedToday(completedToday)
                 .cancelledToday(cancelledToday)
                 .waitingToday(waitingToday)
+                .cancellationsWithReason(cancellationsWithReason)
+                .topCancellationReason(topCancellationReason)
                 .build();
     }
 
@@ -83,8 +104,17 @@ public class AdminService {
                 .appointmentDate(appointment.getAppointmentDate().toString())
                 .slotTime(appointment.getSlotTime().toString())
                 .status(appointment.getStatus().name())
+                                .cancellationReason(appointment.getCancellationReason())
                 .hospitalId(appointment.getDoctor().getHospital() != null ? appointment.getDoctor().getHospital().getId() : null)
                 .hospitalName(appointment.getDoctor().getHospital() != null ? appointment.getDoctor().getHospital().getName() : null)
                 .build();
     }
+
+        private String normalizeReason(String reason) {
+                if (reason == null) {
+                        return null;
+                }
+                String trimmed = reason.trim();
+                return trimmed.isEmpty() ? null : trimmed;
+        }
 }

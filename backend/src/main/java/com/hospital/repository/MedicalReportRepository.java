@@ -18,4 +18,8 @@ public interface MedicalReportRepository extends JpaRepository<MedicalReport, Lo
     List<MedicalReport> findByPatientIdAndDoctorId(Long patientId, Long doctorId);
 
     boolean existsByAppointmentId(Long appointmentId);
+
+    boolean existsByIdAndPatientId(Long id, Long patientId);
+
+    boolean existsByIdAndDoctorId(Long id, Long doctorId);
 }

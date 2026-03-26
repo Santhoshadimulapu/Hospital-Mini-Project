@@ -74,10 +74,18 @@ public class SymptomRecommendationService {
         response.setEmergencyMessage(gptResult.isEmergency()
                 ? "Your symptoms may need urgent care. Please contact emergency services or visit the nearest emergency room immediately."
                 : null);
-        response.setDisclaimer("This AI suggestion is not a diagnosis. Please consult a qualified doctor for medical advice.");
+        response.setDisclaimer("This AI suggestion is not a diagnosis. Any medication suggestion must be verified by a qualified doctor before use.");
         response.setAiProvider("Hugging Face");
         response.setAiReasoning(gptResult.getReasoning());
         response.setUrgencyLevel(gptResult.getUrgency());
+        response.setSymptomSummary(gptResult.getSymptomSummary());
+        response.setPrecautions(gptResult.getPrecautions());
+        response.setMedicationSuggestions(gptResult.getMedicationSuggestions().stream()
+            .map(m -> new SymptomRecommendationResponse.MedicationSuggestion(
+                m.getName(),
+                m.getPurpose(),
+                m.getPrecautions()))
+            .collect(Collectors.toList()));
 
         return response;
     }

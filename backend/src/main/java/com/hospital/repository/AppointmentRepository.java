@@ -1,10 +1,12 @@
 package com.hospital.repository;
 
-import com.hospital.entity.Appointment;
-import org.springframework.data.jpa.repository.JpaRepository;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.hospital.entity.Appointment;
 
 public interface AppointmentRepository extends JpaRepository<Appointment, Long> {
 
@@ -21,4 +23,8 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
             Long doctorId, LocalDate date, Appointment.Status status);
 
     List<Appointment> findByAppointmentDate(LocalDate date);
+
+        boolean existsByIdAndPatientId(Long id, Long patientId);
+
+        boolean existsByIdAndDoctorId(Long id, Long doctorId);
 }

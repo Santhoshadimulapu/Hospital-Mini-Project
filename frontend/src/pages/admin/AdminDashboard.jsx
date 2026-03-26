@@ -18,12 +18,19 @@ ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarEle
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState(null);
+  const [auditLogs, setAuditLogs] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    adminService.getStatistics()
-      .then((res) => setStats(res.data.data))
-      .catch(() => setStats(null))
+    Promise.all([adminService.getStatistics(), adminService.getAuditLogs()])
+      .then(([statsRes, logsRes]) => {
+        setStats(statsRes.data.data);
+        setAuditLogs((logsRes.data.data || []).slice(0, 6));
+      })
+      .catch(() => {
+        setStats(null);
+        setAuditLogs([]);
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -114,6 +121,38 @@ export default function AdminDashboard() {
           <Link to="/admin/appointments" className="btn btn-primary">Manage Appointments</Link>
           <Link to="/admin/doctors" className="btn btn-outline">Manage Doctors</Link>
           <Link to="/admin/hospitals" className="btn btn-outline">Manage Hospitals</Link>
+        </div>
+
+        <div className="card" style={{ marginTop: 24 }}>
+          <div className="card-body">
+            <h3 style={{ marginBottom: 12 }}>Cancellation Analytics</h3>
+            <p style={{ marginBottom: 6 }}>
+              Cancellations with reason: <strong>{stats.cancellationsWithReason || 0}</strong>
+            </p>
+            <p>
+              Top cancellation reason: <strong>{stats.topCancellationReason || 'N/A'}</strong>
+            </p>
+          </div>
+        </div>
+
+        <div className="card" style={{ marginTop: 16 }}>
+          <div className="card-body">
+            <h3 style={{ marginBottom: 12 }}>Recent Admin Activity</h3>
+            {auditLogs.length === 0 ? (
+              <p style={{ color: 'var(--text-muted)' }}>No audit entries available</p>
+            ) : (
+              <div style={{ display: 'grid', gap: 8 }}>
+                {auditLogs.map((log) => (
+                  <div key={log.id} style={{ padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 8 }}>
+                    <div style={{ fontWeight: 600 }}>{log.action}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                      {log.targetType} #{log.targetId || '—'} • {log.actorEmail || 'system'}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

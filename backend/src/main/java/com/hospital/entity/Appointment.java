@@ -1,6 +1,7 @@
 package com.hospital.entity;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 import jakarta.persistence.Column;
@@ -48,6 +49,12 @@ public class Appointment {
     @Column(nullable = false)
     private Status status;
 
+    @Column(name = "cancellation_reason", length = 500)
+    private String cancellationReason;
+
+    @Column(name = "last_rescheduled_at")
+    private LocalDateTime lastRescheduledAt;
+
     @PrePersist
     protected void onCreate() {
         if (status == null) {
@@ -82,6 +89,10 @@ public class Appointment {
     public void setSlotTime(LocalTime slotTime) { this.slotTime = slotTime; }
     public Status getStatus() { return status; }
     public void setStatus(Status status) { this.status = status; }
+    public String getCancellationReason() { return cancellationReason; }
+    public void setCancellationReason(String cancellationReason) { this.cancellationReason = cancellationReason; }
+    public LocalDateTime getLastRescheduledAt() { return lastRescheduledAt; }
+    public void setLastRescheduledAt(LocalDateTime lastRescheduledAt) { this.lastRescheduledAt = lastRescheduledAt; }
 
     public static AppointmentBuilder builder() { return new AppointmentBuilder(); }
 

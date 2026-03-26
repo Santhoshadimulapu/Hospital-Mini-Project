@@ -1,16 +1,18 @@
 package com.hospital.exception;
 
-import com.hospital.dto.ApiResponse;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import java.util.HashMap;
-import java.util.Map;
+import com.hospital.dto.ApiResponse;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -54,6 +56,12 @@ public class GlobalExceptionHandler {
         String message = "Data conflict — this slot may have just been booked by another user. Please try a different slot.";
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAccessDenied(AccessDeniedException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ApiResponse.error("Access denied"));
     }
 
     @ExceptionHandler(Exception.class)

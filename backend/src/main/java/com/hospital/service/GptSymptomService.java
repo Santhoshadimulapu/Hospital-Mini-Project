@@ -27,20 +27,32 @@ public class GptSymptomService {
     private static final String SYSTEM_PROMPT =
             "You are a safe medical triage assistant helping patients find the right doctor specialty.\n" +
             "Rules you MUST follow:\n" +
-            "1. NEVER diagnose any disease. NEVER prescribe medications.\n" +
-            "2. Always recommend the patient consult a qualified physician.\n" +
+            "1. NEVER provide a final diagnosis.\n" +
+            "2. You may provide only non-prescription medication suggestions as options for discussion with a doctor.\n" +
+            "3. Never provide dosage instructions, frequencies, or treatment duration.\n" +
+            "4. Always recommend the patient consult a qualified physician before taking any medicine.\n" +
             "3. For any life-threatening symptom (chest pain, difficulty breathing, stroke, severe bleeding, unresponsiveness, seizure) set emergency=true.\n" +
-            "4. Choose specializations ONLY from this fixed list: General Medicine, Cardiology, Neurology, Orthopedics, Dermatology, ENT, Pulmonology, Gastroenterology, Gynecology, Pediatrics, Psychiatry, Ophthalmology, Urology, Oncology, Endocrinology.\n" +
-            "5. Respond ONLY with valid JSON — no markdown, no code fences, no explanation outside JSON.\n" +
-            "6. Use this exact JSON structure:\n" +
+            "5. Choose specializations ONLY from this fixed list: General Medicine, Cardiology, Neurology, Orthopedics, Dermatology, ENT, Pulmonology, Gastroenterology, Gynecology, Pediatrics, Psychiatry, Ophthalmology, Urology, Oncology, Endocrinology.\n" +
+            "6. Respond ONLY with valid JSON - no markdown, no code fences, no explanation outside JSON.\n" +
+            "7. Use this exact JSON structure:\n" +
             "{\n" +
             "  \"specializations\": [\"SpecA\", \"SpecB\"],\n" +
             "  \"emergency\": false,\n" +
             "  \"urgency\": \"LOW\",\n" +
-            "  \"reasoning\": \"One to three sentences explaining why these specializations were chosen.\"\n" +
+            "  \"reasoning\": \"One to three sentences explaining why these specializations were chosen.\",\n" +
+            "  \"symptomSummary\": \"A short plain-language explanation of what the symptoms may indicate.\",\n" +
+            "  \"precautions\": [\"Precaution 1\", \"Precaution 2\"],\n" +
+            "  \"medicationSuggestions\": [\n" +
+            "    {\n" +
+            "      \"name\": \"Medication name\",\n" +
+            "      \"purpose\": \"Why this may help for these symptoms\",\n" +
+            "      \"precautions\": \"Who should avoid it / major caution\"\n" +
+            "    }\n" +
+            "  ]\n" +
             "}\n" +
             "urgency must be one of: LOW, MEDIUM, HIGH.\n" +
-            "Provide 1 to 3 specializations ordered by relevance.";
+            "Provide 1 to 3 specializations ordered by relevance.\n" +
+            "Medication suggestions must be 0 to 3 items and must be conservative and safety-focused.";
 
     @Value("${hf.api.key:}")
     private String apiKey;
@@ -87,7 +99,7 @@ public class GptSymptomService {
             ObjectNode requestBody = objectMapper.createObjectNode();
             requestBody.put("model", model);
             requestBody.put("temperature", 0.2);
-            requestBody.put("max_tokens", 300);
+            requestBody.put("max_tokens", 500);
 
             ArrayNode messages = requestBody.putArray("messages");
 
@@ -131,12 +143,40 @@ public class GptSymptomService {
             boolean emergency = result.path("emergency").asBoolean(false);
             String urgency = result.path("urgency").asText("LOW");
             String reasoning = result.path("reasoning").asText("");
+            String symptomSummary = result.path("symptomSummary").asText("");
+
+            List<String> precautions = objectMapper.convertValue(
+                    result.path("precautions"),
+                    objectMapper.getTypeFactory().constructCollectionType(List.class, String.class));
+
+            List<MedicationSuggestion> medicationSuggestions = objectMapper.convertValue(
+                    result.path("medicationSuggestions"),
+                    objectMapper.getTypeFactory().constructCollectionType(List.class, MedicationSuggestion.class));
 
             if (specializations == null || specializations.isEmpty()) {
                 specializations = Collections.singletonList("General Medicine");
             }
 
-            return new GptAnalysisResult(specializations, emergency, urgency, reasoning);
+            if (precautions == null) {
+                precautions = Collections.emptyList();
+            }
+
+            if (medicationSuggestions == null) {
+                medicationSuggestions = Collections.emptyList();
+            }
+
+            if (medicationSuggestions.size() > 3) {
+                medicationSuggestions = medicationSuggestions.subList(0, 3);
+            }
+
+            return new GptAnalysisResult(
+                    specializations,
+                    emergency,
+                    urgency,
+                    reasoning,
+                    symptomSummary,
+                    precautions,
+                    medicationSuggestions);
         } catch (Exception e) {
             log.warning("Failed to parse GPT JSON response: " + e.getMessage());
             throw new RuntimeException("AI service returned an unexpected response. Please try again.");
@@ -161,17 +201,65 @@ public class GptSymptomService {
         private final boolean emergency;
         private final String urgency;
         private final String reasoning;
+        private final String symptomSummary;
+        private final List<String> precautions;
+        private final List<MedicationSuggestion> medicationSuggestions;
 
-        public GptAnalysisResult(List<String> specializations, boolean emergency, String urgency, String reasoning) {
+        public GptAnalysisResult(
+                List<String> specializations,
+                boolean emergency,
+                String urgency,
+                String reasoning,
+                String symptomSummary,
+                List<String> precautions,
+                List<MedicationSuggestion> medicationSuggestions) {
             this.specializations = Collections.unmodifiableList(specializations);
             this.emergency = emergency;
             this.urgency = urgency;
             this.reasoning = reasoning;
+            this.symptomSummary = symptomSummary;
+            this.precautions = Collections.unmodifiableList(precautions);
+            this.medicationSuggestions = Collections.unmodifiableList(medicationSuggestions);
         }
 
         public List<String> getSpecializations() { return specializations; }
         public boolean isEmergency() { return emergency; }
         public String getUrgency() { return urgency; }
         public String getReasoning() { return reasoning; }
+        public String getSymptomSummary() { return symptomSummary; }
+        public List<String> getPrecautions() { return precautions; }
+        public List<MedicationSuggestion> getMedicationSuggestions() { return medicationSuggestions; }
+    }
+
+    public static class MedicationSuggestion {
+        private String name;
+        private String purpose;
+        private String precautions;
+
+        public MedicationSuggestion() {}
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public String getPurpose() {
+            return purpose;
+        }
+
+        public void setPurpose(String purpose) {
+            this.purpose = purpose;
+        }
+
+        public String getPrecautions() {
+            return precautions;
+        }
+
+        public void setPrecautions(String precautions) {
+            this.precautions = precautions;
+        }
     }
 }

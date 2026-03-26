@@ -17,6 +17,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.hospital.dto.ApiResponse;
 import com.hospital.dto.AppointmentBookRequest;
+import com.hospital.dto.AppointmentCancellationRequest;
+import com.hospital.dto.AppointmentRescheduleRequest;
 import com.hospital.dto.AppointmentResponse;
 import com.hospital.service.AppointmentService;
 
@@ -44,7 +46,7 @@ public class AppointmentController {
 
     // GET /appointments/doctor/{id}
     @GetMapping("/doctor/{id}")
-    @PreAuthorize("hasAnyRole('DOCTOR', 'ADMIN')")
+    @PreAuthorize("@accessControl.canAccessDoctor(#id)")
     public ResponseEntity<ApiResponse<List<AppointmentResponse>>> getDoctorAppointments(
             @PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(appointmentService.getAppointmentsByDoctor(id)));
@@ -52,7 +54,7 @@ public class AppointmentController {
 
     // GET /appointments/patient/{id}
     @GetMapping("/patient/{id}")
-    @PreAuthorize("hasAnyRole('PATIENT', 'ADMIN')")
+    @PreAuthorize("@accessControl.canAccessPatient(#id)")
     public ResponseEntity<ApiResponse<List<AppointmentResponse>>> getPatientAppointments(
             @PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(appointmentService.getAppointmentsByPatient(id)));
@@ -60,13 +62,14 @@ public class AppointmentController {
 
     // GET /appointments/{id}
     @GetMapping("/{id}")
+    @PreAuthorize("@accessControl.canAccessAppointment(#id)")
     public ResponseEntity<ApiResponse<AppointmentResponse>> getAppointment(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(appointmentService.getAppointmentById(id)));
     }
 
     // PATCH /appointments/{id}/status?status=COMPLETED
     @PatchMapping("/{id}/status")
-    @PreAuthorize("hasAnyRole('DOCTOR', 'ADMIN')")
+    @PreAuthorize("@accessControl.canUpdateAppointmentStatus(#id)")
     public ResponseEntity<ApiResponse<AppointmentResponse>> updateStatus(
             @PathVariable Long id, @RequestParam String status) {
         return ResponseEntity.ok(ApiResponse.success("Status updated",
@@ -75,9 +78,21 @@ public class AppointmentController {
 
     // DELETE /appointments/{id}
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('PATIENT', 'ADMIN')")
-    public ResponseEntity<ApiResponse<Void>> cancelAppointment(@PathVariable Long id) {
-        appointmentService.cancelAppointment(id);
+    @PreAuthorize("@accessControl.canAccessAppointment(#id)")
+    public ResponseEntity<ApiResponse<Void>> cancelAppointment(
+            @PathVariable Long id,
+            @RequestBody(required = false) AppointmentCancellationRequest request) {
+        appointmentService.cancelAppointment(id, request != null ? request.getReason() : null);
         return ResponseEntity.ok(ApiResponse.success("Appointment cancelled", null));
+    }
+
+    // PATCH /appointments/{id}/reschedule
+    @PatchMapping("/{id}/reschedule")
+    @PreAuthorize("@accessControl.canAccessAppointment(#id)")
+    public ResponseEntity<ApiResponse<AppointmentResponse>> rescheduleAppointment(
+            @PathVariable Long id,
+            @Valid @RequestBody AppointmentRescheduleRequest request) {
+        AppointmentResponse response = appointmentService.rescheduleAppointment(id, request);
+        return ResponseEntity.ok(ApiResponse.success("Appointment rescheduled", response));
     }
 }

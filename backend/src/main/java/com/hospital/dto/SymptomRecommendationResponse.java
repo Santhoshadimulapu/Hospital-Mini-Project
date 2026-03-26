@@ -14,6 +14,9 @@ public class SymptomRecommendationResponse {
     private String aiProvider;
     private String aiReasoning;
     private String urgencyLevel;
+    private String symptomSummary;
+    private List<String> precautions;
+    private List<MedicationSuggestion> medicationSuggestions;
 
     public SymptomRecommendationResponse() {}
 
@@ -95,6 +98,68 @@ public class SymptomRecommendationResponse {
 
     public void setUrgencyLevel(String urgencyLevel) {
         this.urgencyLevel = urgencyLevel;
+    }
+
+    public String getSymptomSummary() {
+        return symptomSummary;
+    }
+
+    public void setSymptomSummary(String symptomSummary) {
+        this.symptomSummary = symptomSummary;
+    }
+
+    public List<String> getPrecautions() {
+        return precautions;
+    }
+
+    public void setPrecautions(List<String> precautions) {
+        this.precautions = precautions;
+    }
+
+    public List<MedicationSuggestion> getMedicationSuggestions() {
+        return medicationSuggestions;
+    }
+
+    public void setMedicationSuggestions(List<MedicationSuggestion> medicationSuggestions) {
+        this.medicationSuggestions = medicationSuggestions;
+    }
+
+    public static class MedicationSuggestion {
+        private String name;
+        private String purpose;
+        private String precautions;
+
+        public MedicationSuggestion() {}
+
+        public MedicationSuggestion(String name, String purpose, String precautions) {
+            this.name = name;
+            this.purpose = purpose;
+            this.precautions = precautions;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public String getPurpose() {
+            return purpose;
+        }
+
+        public void setPurpose(String purpose) {
+            this.purpose = purpose;
+        }
+
+        public String getPrecautions() {
+            return precautions;
+        }
+
+        public void setPrecautions(String precautions) {
+            this.precautions = precautions;
+        }
     }
 
     public static class SpecializationMatch {

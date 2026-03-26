@@ -31,7 +31,7 @@ public class MedicalReportController {
 
     // POST /reports/doctor/{doctorId} — doctor creates a report
     @PostMapping("/doctor/{doctorId}")
-    @PreAuthorize("hasAnyRole('DOCTOR', 'ADMIN')")
+    @PreAuthorize("@accessControl.canAccessDoctor(#doctorId)")
     public ResponseEntity<ApiResponse<MedicalReportResponse>> createReport(
             @PathVariable Long doctorId,
             @Valid @RequestBody MedicalReportRequest request) {
@@ -42,14 +42,14 @@ public class MedicalReportController {
 
     // GET /reports/{id} — get report by id
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('DOCTOR', 'PATIENT', 'ADMIN')")
+    @PreAuthorize("@accessControl.canAccessReport(#id)")
     public ResponseEntity<ApiResponse<MedicalReportResponse>> getReport(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(reportService.getReportById(id)));
     }
 
     // GET /reports/appointment/{appointmentId} — get report by appointment
     @GetMapping("/appointment/{appointmentId}")
-    @PreAuthorize("hasAnyRole('DOCTOR', 'PATIENT', 'ADMIN')")
+    @PreAuthorize("@accessControl.canAccessAppointment(#appointmentId)")
     public ResponseEntity<ApiResponse<MedicalReportResponse>> getReportByAppointment(
             @PathVariable Long appointmentId) {
         return ResponseEntity.ok(ApiResponse.success(reportService.getReportByAppointment(appointmentId)));
@@ -57,7 +57,7 @@ public class MedicalReportController {
 
     // GET /reports/patient/{patientId} — patient's all reports
     @GetMapping("/patient/{patientId}")
-    @PreAuthorize("hasAnyRole('PATIENT', 'DOCTOR', 'ADMIN')")
+    @PreAuthorize("@accessControl.canViewPatientReports(#patientId)")
     public ResponseEntity<ApiResponse<List<MedicalReportResponse>>> getPatientReports(
             @PathVariable Long patientId) {
         return ResponseEntity.ok(ApiResponse.success(reportService.getReportsByPatient(patientId)));
@@ -65,7 +65,7 @@ public class MedicalReportController {
 
     // GET /reports/doctor/{doctorId} — doctor's all reports
     @GetMapping("/doctor/{doctorId}")
-    @PreAuthorize("hasAnyRole('DOCTOR', 'ADMIN')")
+    @PreAuthorize("@accessControl.canAccessDoctor(#doctorId)")
     public ResponseEntity<ApiResponse<List<MedicalReportResponse>>> getDoctorReports(
             @PathVariable Long doctorId) {
         return ResponseEntity.ok(ApiResponse.success(reportService.getReportsByDoctor(doctorId)));

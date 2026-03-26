@@ -10,13 +10,14 @@ public class AppointmentResponse {
     private String appointmentDate;
     private String slotTime;
     private String status;
+    private String cancellationReason;
     private boolean hasReport;
     private Long hospitalId;
     private String hospitalName;
 
     public AppointmentResponse() {}
 
-    public AppointmentResponse(Long id, Long patientId, String patientName, Long doctorId, String doctorName, String specialization, String appointmentDate, String slotTime, String status, boolean hasReport, Long hospitalId, String hospitalName) {
+    public AppointmentResponse(Long id, Long patientId, String patientName, Long doctorId, String doctorName, String specialization, String appointmentDate, String slotTime, String status, String cancellationReason, boolean hasReport, Long hospitalId, String hospitalName) {
         this.id = id;
         this.patientId = patientId;
         this.patientName = patientName;
@@ -26,6 +27,7 @@ public class AppointmentResponse {
         this.appointmentDate = appointmentDate;
         this.slotTime = slotTime;
         this.status = status;
+        this.cancellationReason = cancellationReason;
         this.hasReport = hasReport;
         this.hospitalId = hospitalId;
         this.hospitalName = hospitalName;
@@ -49,6 +51,8 @@ public class AppointmentResponse {
     public void setSlotTime(String slotTime) { this.slotTime = slotTime; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+    public String getCancellationReason() { return cancellationReason; }
+    public void setCancellationReason(String cancellationReason) { this.cancellationReason = cancellationReason; }
     public boolean isHasReport() { return hasReport; }
     public void setHasReport(boolean hasReport) { this.hasReport = hasReport; }
     public Long getHospitalId() { return hospitalId; }
@@ -68,6 +72,7 @@ public class AppointmentResponse {
         private String appointmentDate;
         private String slotTime;
         private String status;
+        private String cancellationReason;
         private boolean hasReport;
         private Long hospitalId;
         private String hospitalName;
@@ -81,12 +86,13 @@ public class AppointmentResponse {
         public AppointmentResponseBuilder appointmentDate(String appointmentDate) { this.appointmentDate = appointmentDate; return this; }
         public AppointmentResponseBuilder slotTime(String slotTime) { this.slotTime = slotTime; return this; }
         public AppointmentResponseBuilder status(String status) { this.status = status; return this; }
+        public AppointmentResponseBuilder cancellationReason(String cancellationReason) { this.cancellationReason = cancellationReason; return this; }
         public AppointmentResponseBuilder hasReport(boolean hasReport) { this.hasReport = hasReport; return this; }
         public AppointmentResponseBuilder hospitalId(Long hospitalId) { this.hospitalId = hospitalId; return this; }
         public AppointmentResponseBuilder hospitalName(String hospitalName) { this.hospitalName = hospitalName; return this; }
 
         public AppointmentResponse build() {
-            return new AppointmentResponse(id, patientId, patientName, doctorId, doctorName, specialization, appointmentDate, slotTime, status, hasReport, hospitalId, hospitalName);
+            return new AppointmentResponse(id, patientId, patientName, doctorId, doctorName, specialization, appointmentDate, slotTime, status, cancellationReason, hasReport, hospitalId, hospitalName);
         }
     }
 }

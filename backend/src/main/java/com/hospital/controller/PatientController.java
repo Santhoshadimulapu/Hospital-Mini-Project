@@ -50,14 +50,14 @@ public class PatientController {
 
     // GET /patients/{id}
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('PATIENT', 'ADMIN')")
+    @PreAuthorize("@accessControl.canAccessPatient(#id)")
     public ResponseEntity<ApiResponse<PatientResponse>> getPatient(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(patientService.getPatientById(id)));
     }
 
     // GET /patients/{id}/appointments
     @GetMapping("/{id}/appointments")
-    @PreAuthorize("hasAnyRole('PATIENT', 'ADMIN')")
+    @PreAuthorize("@accessControl.canAccessPatient(#id)")
     public ResponseEntity<ApiResponse<List<AppointmentResponse>>> getPatientAppointments(
             @PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(appointmentService.getAppointmentsByPatient(id)));
@@ -65,7 +65,7 @@ public class PatientController {
 
     // PUT /patients/{id}/profile
     @PutMapping("/{id}/profile")
-    @PreAuthorize("hasAnyRole('PATIENT', 'ADMIN')")
+    @PreAuthorize("@accessControl.canAccessPatient(#id)")
     public ResponseEntity<ApiResponse<PatientResponse>> updateProfile(
             @PathVariable Long id,
             @Valid @RequestBody PatientProfileUpdateRequest request) {
@@ -75,7 +75,7 @@ public class PatientController {
 
     // PUT /patients/{id}/security
     @PutMapping("/{id}/security")
-    @PreAuthorize("hasAnyRole('PATIENT', 'ADMIN')")
+    @PreAuthorize("@accessControl.canAccessPatient(#id)")
     public ResponseEntity<ApiResponse<PatientResponse>> updateSecurity(
             @PathVariable Long id,
             @Valid @RequestBody SecurityUpdateRequest request) {
@@ -85,7 +85,7 @@ public class PatientController {
 
     // PUT /patients/{id}/password
     @PutMapping("/{id}/password")
-    @PreAuthorize("hasAnyRole('PATIENT', 'ADMIN')")
+    @PreAuthorize("@accessControl.canAccessPatient(#id)")
     public ResponseEntity<ApiResponse<Void>> changePassword(
             @PathVariable Long id,
             @Valid @RequestBody PasswordChangeRequest request) {
@@ -95,7 +95,7 @@ public class PatientController {
 
     // DELETE /patients/{id}
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('PATIENT', 'ADMIN')")
+    @PreAuthorize("@accessControl.canAccessPatient(#id)")
     public ResponseEntity<ApiResponse<Void>> deleteAccount(
             @PathVariable Long id,
             @Valid @RequestBody DeleteAccountRequest request) {
