@@ -13,15 +13,24 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const stored = authService.getCurrentUser();
     if (stored && authService.isAuthenticated()) {
-      setUser(stored);
+      const normalizedUser = {
+        ...stored,
+        userId: stored.userId ?? stored.id ?? null,
+      };
+      setUser(normalizedUser);
+      localStorage.setItem('user', JSON.stringify(normalizedUser));
     }
     setLoading(false);
   }, []);
 
   const login = (userData, token) => {
+    const normalizedUser = {
+      ...userData,
+      userId: userData.userId ?? userData.id ?? null,
+    };
     localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(userData));
-    setUser(userData);
+    localStorage.setItem('user', JSON.stringify(normalizedUser));
+    setUser(normalizedUser);
   };
 
   const logout = () => {

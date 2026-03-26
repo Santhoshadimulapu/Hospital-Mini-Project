@@ -136,6 +136,7 @@ public class AppointmentService {
         return mapToResponse(appointment);
     }
 
+    @Transactional(readOnly = true)
     public List<AppointmentResponse> getAppointmentsByDoctor(Long doctorId) {
         if (!doctorRepository.existsById(doctorId)) {
             throw new ResourceNotFoundException("Doctor not found with id: " + doctorId);
@@ -145,6 +146,7 @@ public class AppointmentService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<AppointmentResponse> getAppointmentsByPatient(Long patientId) {
         if (!patientRepository.existsById(patientId)) {
             throw new ResourceNotFoundException("Patient not found with id: " + patientId);
@@ -154,12 +156,14 @@ public class AppointmentService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<AppointmentResponse> getAllAppointments() {
         return appointmentRepository.findAll().stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public AppointmentResponse getAppointmentById(Long id) {
         Appointment appointment = appointmentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Appointment not found with id: " + id));

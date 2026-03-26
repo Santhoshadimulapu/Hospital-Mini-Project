@@ -27,6 +27,7 @@ public class AccessControlService {
         }
         return currentUser()
                 .filter(u -> "PATIENT".equalsIgnoreCase(u.getRole()))
+                .filter(u -> u.getUserId() != null)
                 .map(u -> u.getUserId().equals(patientId))
                 .orElse(false);
     }
@@ -37,6 +38,7 @@ public class AccessControlService {
         }
         return currentUser()
                 .filter(u -> "DOCTOR".equalsIgnoreCase(u.getRole()))
+                .filter(u -> u.getUserId() != null)
                 .map(u -> u.getUserId().equals(doctorId))
                 .orElse(false);
     }
@@ -52,6 +54,9 @@ public class AccessControlService {
         }
 
         AuthenticatedUser user = currentUser.get();
+        if (user.getUserId() == null) {
+            return false;
+        }
         if ("PATIENT".equalsIgnoreCase(user.getRole())) {
             return appointmentRepository.existsByIdAndPatientId(appointmentId, user.getUserId());
         }
@@ -69,6 +74,7 @@ public class AccessControlService {
 
         return currentUser()
                 .filter(u -> "DOCTOR".equalsIgnoreCase(u.getRole()))
+            .filter(u -> u.getUserId() != null)
                 .flatMap(u -> appointmentRepository.findById(appointmentId)
                         .map(a -> a.getDoctor().getId().equals(u.getUserId())))
                 .orElse(false);
@@ -93,6 +99,9 @@ public class AccessControlService {
         }
 
         AuthenticatedUser user = currentUser.get();
+        if (user.getUserId() == null) {
+            return false;
+        }
         if ("PATIENT".equalsIgnoreCase(user.getRole())) {
             return medicalReportRepository.existsByIdAndPatientId(reportId, user.getUserId());
         }
@@ -115,10 +124,16 @@ public class AccessControlService {
 
         AuthenticatedUser user = currentUser.get();
         if ("PATIENT".equalsIgnoreCase(user.getRole())) {
+            if (user.getUserId() == null) {
+                return false;
+            }
             return user.getUserId().equals(patientId);
         }
 
         if ("DOCTOR".equalsIgnoreCase(user.getRole())) {
+            if (user.getUserId() == null) {
+                return false;
+            }
             return !medicalReportRepository.findByPatientIdAndDoctorId(patientId, user.getUserId()).isEmpty();
         }
 

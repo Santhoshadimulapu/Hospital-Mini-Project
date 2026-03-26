@@ -24,7 +24,14 @@ export default function AppointmentHistory() {
   });
 
   const fetchAppointments = () => {
-    patientService.getAppointments(user.userId)
+    const patientId = user?.userId ?? user?.id;
+    if (!patientId) {
+      setLoading(false);
+      toast.error('Session expired. Please log in again.');
+      return;
+    }
+
+    patientService.getAppointments(patientId)
       .then((res) => setAppointments(res.data.data || []))
       .catch(() => toast.error('Failed to load appointments'))
       .finally(() => setLoading(false));
