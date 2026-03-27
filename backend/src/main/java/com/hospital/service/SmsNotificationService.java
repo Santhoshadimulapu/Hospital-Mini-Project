@@ -20,6 +20,7 @@ import org.springframework.web.client.RestTemplate;
 
 import com.hospital.entity.Appointment;
 import com.hospital.entity.Patient;
+import com.hospital.repository.QueueRepository;
 
 @Service
 public class SmsNotificationService {
@@ -44,9 +45,11 @@ public class SmsNotificationService {
     private String hospitalName;
 
     private final RestTemplate restTemplate;
+    private final QueueRepository queueRepository;
 
-    public SmsNotificationService(RestTemplateBuilder restTemplateBuilder) {
+    public SmsNotificationService(RestTemplateBuilder restTemplateBuilder, QueueRepository queueRepository) {
         this.restTemplate = restTemplateBuilder.build();
+        this.queueRepository = queueRepository;
     }
 
     public void sendBookingConfirmation(Appointment appointment, int queueNumber, int estimatedWaitMinutes) {
@@ -57,6 +60,7 @@ public class SmsNotificationService {
                 + "Date: " + formatDate(appointment.getAppointmentDate()) + "\n"
                 + "Time: " + formatTime(appointment.getSlotTime()) + "\n"
                 + "Token No: " + queueNumber + "\n"
+                + "Estimated Wait: " + estimatedWaitMinutes + " mins\n"
                 + "Please arrive 15 minutes early.";
         sendToPatient(appointment, msg);
     }
@@ -67,14 +71,14 @@ public class SmsNotificationService {
         String msg = "Appointment Reminder\n"
                 + "Reminder: You have an appointment with Dr. " + doctorName + " tomorrow at "
                 + formatTime(appointment.getSlotTime()) + " at " + hospital + ".\n"
-                + "Token No: " + queueNumber + ".";
+            + "Token No: " + queueNumber + ".";
         sendToPatient(appointment, msg);
     }
 
     public void sendPatientCalled(Appointment appointment) {
         String msg = "Queue Notification\n"
                 + "Your turn is approaching at " + resolveHospitalName(appointment) + ".\n"
-                + "Token No: " + resolveTokenNumber(appointment) + "\n"
+                + "Token No: " + resolveQueueNumber(appointment) + "\n"
                 + "Please reach the waiting area within 10 minutes.";
         sendToPatient(appointment, msg);
     }
@@ -101,7 +105,7 @@ public class SmsNotificationService {
             msg = "Appointment Rescheduled\n"
                 + "Your appointment with Dr. " + appointment.getDoctor().getName() + " has been rescheduled.\n"
                 + "New Time: " + formatDate(appointment.getAppointmentDate()) + ", " + formatTime(appointment.getSlotTime()) + "\n"
-                + "Token No: " + resolveTokenNumber(appointment) + "\n"
+                + "Token No: " + resolveQueueNumber(appointment) + "\n"
                 + resolveHospitalName(appointment);
         } else {
             msg = "Appointment Update\n"
@@ -115,11 +119,12 @@ public class SmsNotificationService {
         String msg = "Queue Notification\n"
             + "Your turn is approaching at " + resolveHospitalName(appointment) + ".\n"
             + "Token No: " + queuePosition + "\n"
+            + "Estimated Wait: " + estimatedWaitMinutes + " mins\n"
             + "Please reach the waiting area within 10 minutes.";
         sendToPatient(appointment, msg);
     }
 
-        public void sendRegistrationConfirmation(Patient patient) {
+    public void sendRegistrationConfirmation(Patient patient) {
         if (patient == null) {
             return;
         }
@@ -161,6 +166,12 @@ public class SmsNotificationService {
             return;
         }
 
+        String normalizedFrom = normalizePhone(fromNumber);
+        if (normalizedFrom == null || normalizedFrom.isBlank() || !isValidE164(normalizedFrom)) {
+            log.warning("SMS skipped: invalid Twilio from-number after normalization: " + fromNumber + " -> " + normalizedFrom);
+            return;
+        }
+
         try {
             String endpoint = "https://api.twilio.com/2010-04-01/Accounts/" + accountSid + "/Messages.json";
 
@@ -172,7 +183,7 @@ public class SmsNotificationService {
 
             MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
             form.add("To", normalizedTo);
-            form.add("From", fromNumber);
+            form.add("From", normalizedFrom);
             form.add("Body", body);
 
             HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(form, headers);
@@ -203,6 +214,11 @@ public class SmsNotificationService {
         // Handle +0XXXXXXXXXX invalid pattern by treating as local number.
         if (value.startsWith("+0")) {
             value = value.substring(1);
+        }
+
+        // Handle 00-prefixed international numbers (e.g., 0091...)
+        if (value.startsWith("00") && value.length() > 2) {
+            value = "+" + value.substring(2);
         }
 
         // Already E.164-like number.
@@ -242,8 +258,14 @@ public class SmsNotificationService {
         return hospitalName;
     }
 
-    private int resolveTokenNumber(Appointment appointment) {
-        return appointment != null && appointment.getId() != null ? appointment.getId().intValue() : 0;
+    private int resolveQueueNumber(Appointment appointment) {
+        if (appointment == null || appointment.getId() == null) {
+            return 0;
+        }
+
+        return queueRepository.findByAppointmentId(appointment.getId())
+                .map(q -> q.getQueueNumber())
+                .orElse(0);
     }
 
     private String formatDate(LocalDate date) {
